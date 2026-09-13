@@ -5,69 +5,109 @@ import { neon } from "@neondatabase/serverless";
 export async function handler(event)
 {
 
-    if (event.httpMethod !== "POST")
+
+    if(event.httpMethod !== "POST")
     {
+
         return {
-            statusCode: 405,
-            body: JSON.stringify({
-                error: "Method not allowed"
+
+            statusCode:405,
+
+            body:JSON.stringify({
+                error:"Method not allowed"
             })
+
         };
+
     }
 
 
-    if (!event.body)
+
+
+    if(!event.body)
     {
+
         return {
-            statusCode: 400,
-            body: JSON.stringify({
-                error: "Missing request body"
+
+            statusCode:400,
+
+            body:JSON.stringify({
+                error:"Missing body"
             })
+
         };
+
     }
+
+
+
 
 
     let data;
 
+
     try
     {
+
         data = JSON.parse(event.body);
+
     }
+
     catch
     {
+
         return {
-            statusCode: 400,
-            body: JSON.stringify({
-                error: "Invalid JSON"
+
+            statusCode:400,
+
+            body:JSON.stringify({
+                error:"Invalid JSON"
             })
+
         };
+
     }
+
 
 
 
     const {
+
         username,
+
         email,
+
         password
+
     } = data;
 
 
 
-    if (!username || !email || !password)
+
+
+    if(!username || !email || !password)
     {
+
         return {
-            statusCode: 400,
-            body: JSON.stringify({
-                error: "Username, email, and password are required"
+
+            statusCode:400,
+
+            body:JSON.stringify({
+                error:"Missing fields"
             })
+
         };
+
     }
 
 
 
-    const sql = neon(
-        process.env.NEON_DATABASE_URL
-    );
+
+
+    const sql =
+        neon(process.env.NEON_DATABASE_URL);
+
+
 
 
 
@@ -75,67 +115,109 @@ export async function handler(event)
     await sql`
 
         SELECT id
+
         FROM users
+
         WHERE email=${email}
+
         OR username=${username}
 
     `;
 
 
 
-    if (existing.length)
+
+    if(existing.length)
     {
+
         return {
-            statusCode: 400,
-            body: JSON.stringify({
-                error: "Account already exists"
+
+            statusCode:400,
+
+            body:JSON.stringify({
+                error:"Account already exists"
             })
+
         };
+
     }
 
 
 
+
+
     const hash =
-    await bcrypt.hash(
-        password,
-        12
-    );
+        await bcrypt.hash(
+            password,
+            12
+        );
+
+
 
 
 
     await sql`
 
         INSERT INTO users
+
         (
+
             username,
+
             email,
-            password_hash
+
+            password_hash,
+
+            plan,
+
+            settings
+
         )
 
+
         VALUES
+
         (
+
             ${username},
+
             ${email},
-            ${hash}
+
+            ${hash},
+
+            'Free',
+
+            '{}'
+
         )
 
     `;
 
 
 
+
+
     return {
 
-        statusCode: 200,
+
+        statusCode:200,
+
 
         headers:
         {
-            "Content-Type": "application/json"
+
+            "Content-Type":"application/json"
+
         },
 
-        body: JSON.stringify({
-            success: true
+
+        body:JSON.stringify({
+
+            success:true
+
         })
 
     };
+
 
 }

@@ -6,43 +6,62 @@ import { neon } from "@neondatabase/serverless";
 export async function handler(event)
 {
 
-    if (event.httpMethod !== "POST")
+
+    if(event.httpMethod !== "POST")
     {
         return {
-            statusCode: 405,
-            body: JSON.stringify({
-                error: "Method not allowed"
+
+            statusCode:405,
+
+            body:JSON.stringify({
+                error:"Method not allowed"
             })
+
         };
     }
 
 
-    if (!event.body)
+
+    if(!event.body)
     {
         return {
-            statusCode: 400,
-            body: JSON.stringify({
-                error: "Missing request body"
+
+            statusCode:400,
+
+            body:JSON.stringify({
+                error:"Missing body"
             })
+
         };
     }
+
 
 
     let data;
 
+
     try
     {
+
         data = JSON.parse(event.body);
+
     }
+
     catch
     {
+
         return {
+
             statusCode:400,
+
             body:JSON.stringify({
                 error:"Invalid JSON"
             })
+
         };
+
     }
+
 
 
     const {
@@ -52,15 +71,21 @@ export async function handler(event)
 
 
 
-    if (!email || !password)
+    if(!email || !password)
     {
+
         return {
+
             statusCode:400,
+
             body:JSON.stringify({
                 error:"Email and password required"
             })
+
         };
+
     }
+
 
 
 
@@ -69,26 +94,37 @@ export async function handler(event)
 
 
 
+
+
     const users =
     await sql`
 
         SELECT *
+
         FROM users
+
         WHERE email=${email}
 
     `;
 
 
 
+
     if(users.length === 0)
     {
+
         return {
+
             statusCode:401,
+
             body:JSON.stringify({
                 error:"Invalid login"
             })
+
         };
+
     }
+
 
 
 
@@ -96,62 +132,112 @@ export async function handler(event)
 
 
 
+
+
     const valid =
-    await bcrypt.compare(
-        password,
-        user.password_hash
-    );
+        await bcrypt.compare(
+            password,
+            user.password_hash
+        );
+
+
 
 
 
     if(!valid)
     {
+
         return {
+
             statusCode:401,
+
             body:JSON.stringify({
                 error:"Invalid login"
             })
+
         };
+
     }
 
 
 
+
+
+    // Update login time
+
+    await sql`
+
+        UPDATE users
+
+        SET last_login=CURRENT_TIMESTAMP
+
+        WHERE id=${user.id}
+
+    `;
+
+
+
+
+
     const token =
-    jwt.sign(
+        jwt.sign(
 
-        {
-            id:user.id,
-            username:user.username
-        },
+            {
 
-        process.env.JWT_SECRET,
+                id:user.id,
 
-        {
-            expiresIn:"30d"
-        }
+                username:user.username
 
-    );
+            },
+
+
+            process.env.JWT_SECRET,
+
+
+            {
+
+                expiresIn:"30d"
+
+            }
+
+        );
+
+
+
 
 
 
     return {
 
+
         statusCode:200,
 
-        headers:{
+
+        headers:
+        {
+
             "Content-Type":"application/json"
+
         },
 
-        body:JSON.stringify({
+
+        body:JSON.stringify(
+
+        {
 
             success:true,
 
             token,
 
-            username:user.username
+            username:user.username,
+
+            plan:user.plan,
+
+            avatar:user.avatar
 
         })
 
     };
+
 
 }
