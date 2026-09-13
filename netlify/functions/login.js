@@ -6,110 +6,152 @@ import { neon } from "@neondatabase/serverless";
 export async function handler(event)
 {
 
-
-const sql =
-neon(process.env.NEON_DATABASE_URL);
-
-
-
-const {
-email,
-password
-}=JSON.parse(event.body);
-
+    if (event.httpMethod !== "POST")
+    {
+        return {
+            statusCode: 405,
+            body: JSON.stringify({
+                error: "Method not allowed"
+            })
+        };
+    }
 
 
-const users =
-await sql`
-
-SELECT *
-FROM users
-WHERE email=${email}
-
-`;
-
-
-
-if(!users.length)
-{
-
-return {
-
-statusCode:401,
-
-body:JSON.stringify({
-error:"Invalid login"
-})
-
-};
-
-}
+    if (!event.body)
+    {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                error: "Missing request body"
+            })
+        };
+    }
 
 
+    let data;
 
-const user=users[0];
+    try
+    {
+        data = JSON.parse(event.body);
+    }
+    catch
+    {
+        return {
+            statusCode:400,
+            body:JSON.stringify({
+                error:"Invalid JSON"
+            })
+        };
+    }
 
 
-
-const valid =
-await bcrypt.compare(
-password,
-user.password_hash
-);
+    const {
+        email,
+        password
+    } = data;
 
 
 
-if(!valid)
-{
-
-return {
-
-statusCode:401,
-
-body:JSON.stringify({
-error:"Invalid login"
-})
-
-};
-
-}
+    if (!email || !password)
+    {
+        return {
+            statusCode:400,
+            body:JSON.stringify({
+                error:"Email and password required"
+            })
+        };
+    }
 
 
 
-const token =
-jwt.sign(
-
-{
-id:user.id,
-username:user.username
-
-},
-
-process.env.JWT_SECRET,
-
-{
-expiresIn:"30d"
-}
-
-);
+    const sql =
+        neon(process.env.NEON_DATABASE_URL);
 
 
 
-return {
+    const users =
+    await sql`
 
-statusCode:200,
+        SELECT *
+        FROM users
+        WHERE email=${email}
 
-body:JSON.stringify({
+    `;
 
-success:true,
 
-token,
 
-username:user.username
+    if(users.length === 0)
+    {
+        return {
+            statusCode:401,
+            body:JSON.stringify({
+                error:"Invalid login"
+            })
+        };
+    }
 
-})
 
-};
 
+    const user = users[0];
+
+
+
+    const valid =
+    await bcrypt.compare(
+        password,
+        user.password_hash
+    );
+
+
+
+    if(!valid)
+    {
+        return {
+            statusCode:401,
+            body:JSON.stringify({
+                error:"Invalid login"
+            })
+        };
+    }
+
+
+
+    const token =
+    jwt.sign(
+
+        {
+            id:user.id,
+            username:user.username
+        },
+
+        process.env.JWT_SECRET,
+
+        {
+            expiresIn:"30d"
+        }
+
+    );
+
+
+
+    return {
+
+        statusCode:200,
+
+        headers:{
+            "Content-Type":"application/json"
+        },
+
+        body:JSON.stringify({
+
+            success:true,
+
+            token,
+
+            username:user.username
+
+        })
+
+    };
 
 }
