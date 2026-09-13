@@ -5,33 +5,90 @@ import { neon } from "@neondatabase/serverless";
 export async function handler(event)
 {
 
-    const sql = neon(
-        process.env.NEON_DATABASE_URL
-    );
+    if (event.httpMethod !== "POST")
+    {
+        return {
+            statusCode: 405,
+            body: JSON.stringify({
+                error: "Method not allowed"
+            })
+        };
+    }
+
+
+    if (!event.body)
+    {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                error: "Missing request body"
+            })
+        };
+    }
+
+
+    let data;
+
+    try
+    {
+        data = JSON.parse(event.body);
+    }
+    catch
+    {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                error: "Invalid JSON"
+            })
+        };
+    }
+
 
 
     const {
         username,
         email,
         password
-    } = JSON.parse(event.body);
+    } = data;
+
+
+
+    if (!username || !email || !password)
+    {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                error: "Username, email, and password are required"
+            })
+        };
+    }
+
+
+
+    const sql = neon(
+        process.env.NEON_DATABASE_URL
+    );
 
 
 
     const existing =
     await sql`
+
         SELECT id
         FROM users
         WHERE email=${email}
+        OR username=${username}
+
     `;
 
 
-    if(existing.length)
+
+    if (existing.length)
     {
         return {
-            statusCode:400,
-            body:JSON.stringify({
-                error:"Account already exists"
+            statusCode: 400,
+            body: JSON.stringify({
+                error: "Account already exists"
             })
         };
     }
@@ -68,10 +125,15 @@ export async function handler(event)
 
     return {
 
-        statusCode:200,
+        statusCode: 200,
 
-        body:JSON.stringify({
-            success:true
+        headers:
+        {
+            "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+            success: true
         })
 
     };
